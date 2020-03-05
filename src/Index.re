@@ -12,7 +12,7 @@ let remap = (low1, high1, low2, high2, value) => {
 
 module Mandelbrot: {let testIterations: Complex.t => int;} = {
   let rec test = (c, c0, i) => {
-    Complex.mod_(c) > 4. || i > 100
+    Complex.mod_(c) > 4.0 || i > 10000
       ? i : test(Complex.mult(c, c)->Complex.add(c0), c0, i + 1);
   };
 
@@ -21,10 +21,11 @@ module Mandelbrot: {let testIterations: Complex.t => int;} = {
 
 module App = {
   [@react.component]
-  let make = (~w, ~h) => {
+  let make = (~w, ~h, ~pan, ~zoom) => {
     let grid = Array.make_matrix(w, h, ());
     let w_f = float_of_int(w);
     let h_f = float_of_int(h);
+    let (pan_x, pan_y) = pan;
     <table>
       <tbody>
         {grid
@@ -42,9 +43,13 @@ module App = {
                             ~width="3px",
                             ~backgroundColor=
                               {let iters =
-                                 Mandelbrot.testIterations((xn -. 0.25, yn));
+                                 Mandelbrot.testIterations((
+                                   xn /. zoom +. pan_x,
+                                   yn /. zoom +. pan_y,
+                                 ));
                                let lightness = 100 - min(iters, 100);
-                               {j|hsl(0, 0%, $lightness%)|j}},
+                               let hue = float_of_int(iters) *. 20.;
+                               {j|hsl($hue, 100%, $lightness%)|j}},
                             (),
                           )}
                         />;
@@ -62,4 +67,10 @@ module App = {
   };
 };
 
-ReactDOMRe.renderToElementWithId(<App h=128 w=128 />, "root");
+ReactDOMRe.renderToElementWithId(
+  <>
+    <App h=128 w=128 zoom=42.0 pan=((-1.1182), (-0.27)) />
+    <App h=128 w=128 zoom=2.0 pan=((-1.), (-0.0)) />
+  </>,
+  "root",
+);

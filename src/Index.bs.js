@@ -48,7 +48,7 @@ function testIterations(c) {
   while(true) {
     var i = _i;
     var c$1 = _c;
-    var match = mod_(c$1) > 4 || i > 100;
+    var match = mod_(c$1) > 4.0 || i > 10000;
     if (match) {
       return i;
     } else {
@@ -66,23 +66,28 @@ var Mandelbrot = {
 function Index$App(Props) {
   var w = Props.w;
   var h = Props.h;
+  var pan = Props.pan;
+  var zoom = Props.zoom;
   var grid = $$Array.make_matrix(w, h, /* () */0);
   var w_f = w;
   var h_f = h;
+  var pan_y = pan[1];
+  var pan_x = pan[0];
   return React.createElement("table", undefined, React.createElement("tbody", undefined, $$Array.mapi((function (y, row) {
                         return React.createElement("tr", undefined, $$Array.mapi((function (x, param) {
                                           var xn = remap(0, w_f, -2, 1, x);
                                           var yn = remap(0, h_f, -1, 1, y);
                                           var iters = testIterations(/* tuple */[
-                                                xn - 0.25,
-                                                yn
+                                                xn / zoom + pan_x,
+                                                yn / zoom + pan_y
                                               ]);
                                           var lightness = 100 - (
                                             iters < 100 ? iters : 100
                                           ) | 0;
+                                          var hue = iters * 20;
                                           return React.createElement("td", {
                                                       style: {
-                                                        backgroundColor: "hsl(0, 0%, " + (String(lightness) + "%)"),
+                                                        backgroundColor: "hsl(" + (String(hue) + (", 100%, " + (String(lightness) + "%)"))),
                                                         height: "3px",
                                                         width: "3px"
                                                       }
@@ -95,10 +100,23 @@ var App = {
   make: Index$App
 };
 
-ReactDOMRe.renderToElementWithId(React.createElement(Index$App, {
-          w: 128,
-          h: 128
-        }), "root");
+ReactDOMRe.renderToElementWithId(React.createElement(React.Fragment, undefined, React.createElement(Index$App, {
+              w: 128,
+              h: 128,
+              pan: /* tuple */[
+                -1.1182,
+                -0.27
+              ],
+              zoom: 42.0
+            }), React.createElement(Index$App, {
+              w: 128,
+              h: 128,
+              pan: /* tuple */[
+                -1,
+                -0.0
+              ],
+              zoom: 2.0
+            })), "root");
 
 exports.Complex = Complex;
 exports.remap = remap;
