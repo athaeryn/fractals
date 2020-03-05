@@ -75,21 +75,19 @@ function Index$App(Props) {
   var pan_x = pan[0];
   return React.createElement("table", undefined, React.createElement("tbody", undefined, $$Array.mapi((function (y, row) {
                         return React.createElement("tr", undefined, $$Array.mapi((function (x, param) {
-                                          var xn = remap(0, w_f, -2, 1, x);
+                                          var xn = remap(0, w_f, -1, 1, x);
                                           var yn = remap(0, h_f, -1, 1, y);
                                           var iters = testIterations(/* tuple */[
                                                 xn / zoom + pan_x,
                                                 yn / zoom + pan_y
                                               ]);
-                                          var lightness = 100 - (
-                                            iters < 100 ? iters : 100
-                                          ) | 0;
+                                          var lightness = remap(0, 10000, 50, 0, iters) | 0;
                                           var hue = iters * 20;
                                           return React.createElement("td", {
                                                       style: {
                                                         backgroundColor: "hsl(" + (String(hue) + (", 100%, " + (String(lightness) + "%)"))),
-                                                        height: "3px",
-                                                        width: "3px"
+                                                        height: "2px",
+                                                        width: "2px"
                                                       }
                                                     });
                                         }), row));
@@ -104,18 +102,10 @@ ReactDOMRe.renderToElementWithId(React.createElement(React.Fragment, undefined, 
               w: 128,
               h: 128,
               pan: /* tuple */[
-                -1.1182,
-                -0.27
+                0.27998,
+                0.00864
               ],
-              zoom: 42.0
-            }), React.createElement(Index$App, {
-              w: 128,
-              h: 128,
-              pan: /* tuple */[
-                -1,
-                -0.0
-              ],
-              zoom: 2.0
+              zoom: 1.0
             })), "root");
 
 exports.Complex = Complex;
