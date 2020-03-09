@@ -22,7 +22,7 @@ function mult(param, param$1) {
         ];
 }
 
-function mod_(param) {
+function mod_sq(param) {
   var i = param[1];
   var r = param[0];
   return r * r + i * i;
@@ -31,7 +31,7 @@ function mod_(param) {
 var Complex = {
   add: add,
   mult: mult,
-  mod_: mod_
+  mod_sq: mod_sq
 };
 
 function remap(low1, high1, low2, high2, value) {
@@ -48,7 +48,7 @@ function testIterations(c) {
   while(true) {
     var i = _i;
     var c$1 = _c;
-    var match = mod_(c$1) > 4.0 || i > 10000;
+    var match = mod_sq(c$1) > 4.0 || i > 20000;
     if (match) {
       return i;
     } else {
@@ -81,11 +81,10 @@ function Index$App(Props) {
                                                 xn / zoom + pan_x,
                                                 yn / zoom + pan_y
                                               ]);
-                                          var lightness = remap(0, 10000, 50, 0, iters) | 0;
-                                          var hue = iters * 20;
+                                          var lightness = iters % 100;
                                           return React.createElement("td", {
                                                       style: {
-                                                        backgroundColor: "hsl(" + (String(hue) + (", 100%, " + (String(lightness) + "%)"))),
+                                                        backgroundColor: "hsl(" + (String(iters) + (", 100%, " + (String(lightness) + "%)"))),
                                                         height: "2px",
                                                         width: "2px"
                                                       }
@@ -99,13 +98,13 @@ var App = {
 };
 
 ReactDOMRe.renderToElementWithId(React.createElement(React.Fragment, undefined, React.createElement(Index$App, {
-              w: 128,
-              h: 128,
+              w: 256,
+              h: 256,
               pan: /* tuple */[
-                0.27998,
-                0.00864
+                -0.5,
+                -0.0
               ],
-              zoom: 1.0
+              zoom: 0.75
             })), "root");
 
 exports.Complex = Complex;
