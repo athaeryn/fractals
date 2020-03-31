@@ -103,12 +103,20 @@ let toolForKey =
   | "r" => Rotate->Some
   | _ => None;
 
+type drag = {
+  initialX: float,
+  initialY: float,
+  currentX: float,
+  currentY: float,
+};
+
 module App = {
   type state = {
     nextId: int,
     rects: list(rect),
     stagingRect: option(rect),
     selectedRectId: option(int),
+    gesture: option(drag),
     tool,
     width: int,
     height: int,
@@ -131,29 +139,51 @@ module App = {
     && y <= float_of_int(state.height);
   };
 
+  let startDrag = (state, x, y) => {
+    ...state,
+    gesture: Some({initialX: x, initialY: y, currentX: x, currentY: y}),
+  };
+
+  let updateDrag = (state, x, y) => {
+    ...state,
+    gesture:
+      state.gesture
+      ->Option.map(gesture => {...gesture, currentX: x, currentY: y}),
+  };
+
+  let cancelDrag = state => {...state, gesture: None};
+
   [@react.component]
   let make = () => {
     let (state, dispatch) =
       React.useReducer(
         (state, action) => {
           switch (action, state) {
-          | (SelectTool(tool), _) => {...state, tool, stagingRect: None}
+          | (SelectTool(tool), _) => {
+              ...state,
+              tool,
+              gesture: None,
+              stagingRect: None,
+            }
 
           | (MouseDown(x, y), {tool: Add, stagingRect: None})
               when inBounds(state, x, y) => {
-              ...state,
+              ...state->startDrag(x, y),
               stagingRect: Some({id: 0, x, y, w: 0., h: 0., rot: 0.}),
             }
 
           | (MouseMove(x, y), {tool: Add, stagingRect: Some(staging)}) =>
             let s = min(x -. staging.x, y -. staging.y);
-            {...state, stagingRect: Some({...staging, w: s, h: s})};
+            {
+              ...state->updateDrag(x, y),
+              stagingRect: Some({...staging, w: s, h: s}),
+            };
 
           | (MouseUp(x, y), {tool: Add, stagingRect: Some(staging)}) =>
             let s = min(x -. staging.x, y -. staging.y);
             let newRect = {...staging, id: state.nextId, w: s, h: s};
             {
-              ...state,
+              ...state->cancelDrag,
               stagingRect: None,
               selectedRectId: Some(newRect.id),
               nextId: newRect.id + 1,
@@ -165,20 +195,28 @@ module App = {
             let stagingRect =
               state.rects
               ->List.getBy(({id}) => state.selectedRectId == Some(id));
-            {...state, stagingRect};
+            {...state->startDrag(x, y), stagingRect};
 
-          | (MouseMove(x, y), {tool: Move, stagingRect: Some(staging)}) => {
-              ...state,
-              stagingRect: Some({...staging, x, y}),
-            }
-          | (MouseUp(x, y), {tool: Move, stagingRect: Some(staging)}) => {
-              ...state,
+          | (MouseMove(x, y), {tool: Move, stagingRect: Some(staging)}) =>
+            let state' = state->updateDrag(x, y);
+            let selctedRect =
+              state'.rects
+              ->List.getBy(({id}) => state'.selectedRectId == Some(id));
+            let (x', y') =
+              switch (selctedRect, state'.gesture) {
+              | (Some(starting), Some(drag)) => (
+                  starting.x +. drag.currentX -. drag.initialX,
+                  starting.y +. drag.currentY -. drag.initialY,
+                )
+              | _ => (x, y)
+              };
+            {...state', stagingRect: Some({...staging, x: x', y: y'})};
+          | (MouseUp(_), {tool: Move, stagingRect: Some(staging)}) => {
+              ...state->cancelDrag,
               stagingRect: None,
               rects:
                 state.rects
-                ->List.map(rect => {
-                    rect.id == staging.id ? {...staging, x, y} : rect
-                  }),
+                ->List.map(rect => {rect.id == staging.id ? staging : rect}),
             }
 
           | (SelectRect(id), _) => {...state, selectedRectId: Some(id)}
@@ -192,6 +230,7 @@ module App = {
           nextId: 1,
           stagingRect: None,
           selectedRectId: None,
+          gesture: None,
           width: 800,
           height: 800,
           mouse: (0., 0.),
@@ -408,13 +447,15 @@ module App = {
                  width={rect.w->Js.Float.toString}
                  height={rect.h->Js.Float.toString}
                  strokeWidth="1"
-                 stroke="cadetblue"
+                 stroke={state.tool == Move ? "goldenrod" : "limegreen"}
+                 strokeDasharray="10 2"
                  fill="none"
                />
              )
            ->Option.getWithDefault(React.null)}
           {state.rects
-           ->List.map(rect =>
+           ->List.map(rect => {
+               let selected = state.selectedRectId == Some(rect.id);
                <rect
                  key={rect.id->string_of_int}
                  x={rect.x->Js.Float.toString}
@@ -422,13 +463,16 @@ module App = {
                  width={rect.w->Js.Float.toString}
                  height={rect.h->Js.Float.toString}
                  strokeWidth="1"
-                 stroke={
-                   state.selectedRectId == Some(rect.id)
-                     ? "goldenrod" : "gainsboro"
+                 stroke={selected ? "goldenrod" : "gainsboro"}
+                 strokeDasharray=?{
+                   selected
+                   && state.tool == Move
+                   && Option.isSome(state.gesture)
+                     ? Some("1 2") : None
                  }
                  fill="none"
-               />
-             )
+               />;
+             })
            ->List.toArray
            ->React.array}
         </svg>

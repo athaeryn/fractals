@@ -159,6 +159,60 @@ function inBounds(state, x, y) {
   }
 }
 
+function startDrag(state, x, y) {
+  return {
+          nextId: state.nextId,
+          rects: state.rects,
+          stagingRect: state.stagingRect,
+          selectedRectId: state.selectedRectId,
+          gesture: {
+            initialX: x,
+            initialY: y,
+            currentX: x,
+            currentY: y
+          },
+          tool: state.tool,
+          width: state.width,
+          height: state.height,
+          mouse: state.mouse
+        };
+}
+
+function updateDrag(state, x, y) {
+  return {
+          nextId: state.nextId,
+          rects: state.rects,
+          stagingRect: state.stagingRect,
+          selectedRectId: state.selectedRectId,
+          gesture: Belt_Option.map(state.gesture, (function (gesture) {
+                  return {
+                          initialX: gesture.initialX,
+                          initialY: gesture.initialY,
+                          currentX: x,
+                          currentY: y
+                        };
+                })),
+          tool: state.tool,
+          width: state.width,
+          height: state.height,
+          mouse: state.mouse
+        };
+}
+
+function cancelDrag(state) {
+  return {
+          nextId: state.nextId,
+          rects: state.rects,
+          stagingRect: state.stagingRect,
+          selectedRectId: state.selectedRectId,
+          gesture: undefined,
+          tool: state.tool,
+          width: state.width,
+          height: state.height,
+          mouse: state.mouse
+        };
+}
+
 function Index$App(Props) {
   var match = React.useReducer((function (state, action) {
           switch (action.tag | 0) {
@@ -175,9 +229,10 @@ function Index$App(Props) {
                     switch (match) {
                       case /* Add */0 :
                           if (inBounds(state, x, y)) {
+                            var init = startDrag(state, x, y);
                             return {
-                                    nextId: state.nextId,
-                                    rects: state.rects,
+                                    nextId: init.nextId,
+                                    rects: init.rects,
                                     stagingRect: {
                                       id: 0,
                                       w: 0,
@@ -186,11 +241,12 @@ function Index$App(Props) {
                                       x: x,
                                       y: y
                                     },
-                                    selectedRectId: state.selectedRectId,
-                                    tool: state.tool,
-                                    width: state.width,
-                                    height: state.height,
-                                    mouse: state.mouse
+                                    selectedRectId: init.selectedRectId,
+                                    gesture: init.gesture,
+                                    tool: init.tool,
+                                    width: init.width,
+                                    height: init.height,
+                                    mouse: init.mouse
                                   };
                           } else {
                             return state;
@@ -202,15 +258,17 @@ function Index$App(Props) {
                             var stagingRect = Belt_List.getBy(state.rects, (function (param) {
                                     return Caml_obj.caml_equal(state.selectedRectId, param.id);
                                   }));
+                            var init$1 = startDrag(state, x, y);
                             return {
-                                    nextId: state.nextId,
-                                    rects: state.rects,
+                                    nextId: init$1.nextId,
+                                    rects: init$1.rects,
                                     stagingRect: stagingRect,
-                                    selectedRectId: state.selectedRectId,
-                                    tool: state.tool,
-                                    width: state.width,
-                                    height: state.height,
-                                    mouse: state.mouse
+                                    selectedRectId: init$1.selectedRectId,
+                                    gesture: init$1.gesture,
+                                    tool: init$1.tool,
+                                    width: init$1.width,
+                                    height: init$1.height,
+                                    mouse: init$1.mouse
                                   };
                           } else {
                             return state;
@@ -232,9 +290,10 @@ function Index$App(Props) {
                     switch (match$2) {
                       case /* Add */0 :
                           var s = Caml_primitive.caml_float_min(x$1 - staging.x, y$1 - staging.y);
+                          var init$2 = updateDrag(state, x$1, y$1);
                           return {
-                                  nextId: state.nextId,
-                                  rects: state.rects,
+                                  nextId: init$2.nextId,
+                                  rects: init$2.rects,
                                   stagingRect: {
                                     id: staging.id,
                                     w: s,
@@ -243,31 +302,52 @@ function Index$App(Props) {
                                     x: staging.x,
                                     y: staging.y
                                   },
-                                  selectedRectId: state.selectedRectId,
-                                  tool: state.tool,
-                                  width: state.width,
-                                  height: state.height,
-                                  mouse: state.mouse
+                                  selectedRectId: init$2.selectedRectId,
+                                  gesture: init$2.gesture,
+                                  tool: init$2.tool,
+                                  width: init$2.width,
+                                  height: init$2.height,
+                                  mouse: init$2.mouse
                                 };
                       case /* Select */1 :
                           return state;
                       case /* Move */2 :
+                          var state$prime = updateDrag(state, x$1, y$1);
+                          var selctedRect = Belt_List.getBy(state$prime.rects, (function (param) {
+                                  return Caml_obj.caml_equal(state$prime.selectedRectId, param.id);
+                                }));
+                          var match$3 = state$prime.gesture;
+                          var match$4;
+                          if (selctedRect !== undefined && match$3 !== undefined) {
+                            var drag = match$3;
+                            var starting = selctedRect;
+                            match$4 = /* tuple */[
+                              starting.x + drag.currentX - drag.initialX,
+                              starting.y + drag.currentY - drag.initialY
+                            ];
+                          } else {
+                            match$4 = /* tuple */[
+                              x$1,
+                              y$1
+                            ];
+                          }
                           return {
-                                  nextId: state.nextId,
-                                  rects: state.rects,
+                                  nextId: state$prime.nextId,
+                                  rects: state$prime.rects,
                                   stagingRect: {
                                     id: staging.id,
                                     w: staging.w,
                                     h: staging.h,
                                     rot: staging.rot,
-                                    x: x$1,
-                                    y: y$1
+                                    x: match$4[0],
+                                    y: match$4[1]
                                   },
-                                  selectedRectId: state.selectedRectId,
-                                  tool: state.tool,
-                                  width: state.width,
-                                  height: state.height,
-                                  mouse: state.mouse
+                                  selectedRectId: state$prime.selectedRectId,
+                                  gesture: state$prime.gesture,
+                                  tool: state$prime.tool,
+                                  width: state$prime.width,
+                                  height: state$prime.height,
+                                  mouse: state$prime.mouse
                                 };
                       
                     }
@@ -276,18 +356,16 @@ function Index$App(Props) {
                   return state;
                 }
             case /* MouseUp */2 :
-                var match$3 = state.stagingRect;
-                if (match$3 !== undefined) {
-                  var match$4 = state.tool;
-                  if (match$4 >= 3) {
+                var match$5 = state.stagingRect;
+                if (match$5 !== undefined) {
+                  var match$6 = state.tool;
+                  if (match$6 >= 3) {
                     return state;
                   } else {
-                    var staging$1 = match$3;
-                    var y$2 = action[1];
-                    var x$2 = action[0];
-                    switch (match$4) {
+                    var staging$1 = match$5;
+                    switch (match$6) {
                       case /* Add */0 :
-                          var s$1 = Caml_primitive.caml_float_min(x$2 - staging$1.x, y$2 - staging$1.y);
+                          var s$1 = Caml_primitive.caml_float_min(action[0] - staging$1.x, action[1] - staging$1.y);
                           var newRect_id = state.nextId;
                           var newRect_rot = staging$1.rot;
                           var newRect_x = staging$1.x;
@@ -300,42 +378,39 @@ function Index$App(Props) {
                             x: newRect_x,
                             y: newRect_y
                           };
+                          var init$3 = cancelDrag(state);
                           return {
                                   nextId: newRect_id + 1 | 0,
                                   rects: Belt_List.add(state.rects, newRect),
                                   stagingRect: undefined,
                                   selectedRectId: newRect_id,
-                                  tool: state.tool,
-                                  width: state.width,
-                                  height: state.height,
-                                  mouse: state.mouse
+                                  gesture: init$3.gesture,
+                                  tool: init$3.tool,
+                                  width: init$3.width,
+                                  height: init$3.height,
+                                  mouse: init$3.mouse
                                 };
                       case /* Select */1 :
                           return state;
                       case /* Move */2 :
+                          var init$4 = cancelDrag(state);
                           return {
-                                  nextId: state.nextId,
+                                  nextId: init$4.nextId,
                                   rects: Belt_List.map(state.rects, (function (rect) {
                                           var match = rect.id === staging$1.id;
                                           if (match) {
-                                            return {
-                                                    id: staging$1.id,
-                                                    w: staging$1.w,
-                                                    h: staging$1.h,
-                                                    rot: staging$1.rot,
-                                                    x: x$2,
-                                                    y: y$2
-                                                  };
+                                            return staging$1;
                                           } else {
                                             return rect;
                                           }
                                         })),
                                   stagingRect: undefined,
-                                  selectedRectId: state.selectedRectId,
-                                  tool: state.tool,
-                                  width: state.width,
-                                  height: state.height,
-                                  mouse: state.mouse
+                                  selectedRectId: init$4.selectedRectId,
+                                  gesture: init$4.gesture,
+                                  tool: init$4.tool,
+                                  width: init$4.width,
+                                  height: init$4.height,
+                                  mouse: init$4.mouse
                                 };
                       
                     }
@@ -349,6 +424,7 @@ function Index$App(Props) {
                         rects: state.rects,
                         stagingRect: undefined,
                         selectedRectId: state.selectedRectId,
+                        gesture: undefined,
                         tool: action[0],
                         width: state.width,
                         height: state.height,
@@ -360,6 +436,7 @@ function Index$App(Props) {
                         rects: state.rects,
                         stagingRect: state.stagingRect,
                         selectedRectId: action[0],
+                        gesture: state.gesture,
                         tool: state.tool,
                         width: state.width,
                         height: state.height,
@@ -372,6 +449,7 @@ function Index$App(Props) {
         rects: /* [] */0,
         stagingRect: undefined,
         selectedRectId: undefined,
+        gesture: undefined,
         tool: /* Add */0,
         width: 800,
         height: 800,
@@ -716,33 +794,44 @@ function Index$App(Props) {
                       height: String(state.height),
                       width: String(state.width)
                     }, Belt_Option.getWithDefault(Belt_Option.map(state.stagingRect, (function (rect) {
+                                var match = state.tool === /* Move */2;
                                 return React.createElement("rect", {
                                             key: String(rect.id),
                                             height: rect.h.toString(),
                                             width: rect.w.toString(),
                                             fill: "none",
-                                            stroke: "cadetblue",
+                                            stroke: match ? "goldenrod" : "limegreen",
+                                            strokeDasharray: "10 2",
                                             strokeWidth: "1",
                                             x: rect.x.toString(),
                                             y: rect.y.toString()
                                           });
                               })), null), Belt_List.toArray(Belt_List.map(state.rects, (function (rect) {
-                                var match = Caml_obj.caml_equal(state.selectedRectId, rect.id);
-                                return React.createElement("rect", {
-                                            key: String(rect.id),
-                                            height: rect.h.toString(),
-                                            width: rect.w.toString(),
-                                            fill: "none",
-                                            stroke: match ? "goldenrod" : "gainsboro",
-                                            strokeWidth: "1",
-                                            x: rect.x.toString(),
-                                            y: rect.y.toString()
-                                          });
+                                var selected = Caml_obj.caml_equal(state.selectedRectId, rect.id);
+                                var match = selected && state.tool === /* Move */2 && Belt_Option.isSome(state.gesture);
+                                var tmp = {
+                                  key: String(rect.id),
+                                  height: rect.h.toString(),
+                                  width: rect.w.toString(),
+                                  fill: "none",
+                                  stroke: selected ? "goldenrod" : "gainsboro",
+                                  strokeWidth: "1",
+                                  x: rect.x.toString(),
+                                  y: rect.y.toString()
+                                };
+                                var tmp$1 = match ? "1 2" : undefined;
+                                if (tmp$1 !== undefined) {
+                                  tmp.strokeDasharray = Caml_option.valFromOption(tmp$1);
+                                }
+                                return React.createElement("rect", tmp);
                               }))))));
 }
 
 var App = {
   inBounds: inBounds,
+  startDrag: startDrag,
+  updateDrag: updateDrag,
+  cancelDrag: cancelDrag,
   make: Index$App
 };
 
