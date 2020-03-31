@@ -137,7 +137,7 @@ module App = {
       React.useReducer(
         (state, action) => {
           switch (action, state) {
-          | (SelectTool(tool), _) => {...state, tool}
+          | (SelectTool(tool), _) => {...state, tool, stagingRect: None}
 
           | (MouseDown(x, y), {tool: Add, stagingRect: None})
               when inBounds(state, x, y) => {
@@ -159,6 +159,27 @@ module App = {
               nextId: newRect.id + 1,
               rects: state.rects->List.add(newRect),
             };
+
+          | (MouseDown(x, y), {tool: Move, stagingRect: None})
+              when inBounds(state, x, y) =>
+            let stagingRect =
+              state.rects
+              ->List.getBy(({id}) => state.selectedRectId == Some(id));
+            {...state, stagingRect};
+
+          | (MouseMove(x, y), {tool: Move, stagingRect: Some(staging)}) => {
+              ...state,
+              stagingRect: Some({...staging, x, y}),
+            }
+          | (MouseUp(x, y), {tool: Move, stagingRect: Some(staging)}) => {
+              ...state,
+              stagingRect: None,
+              rects:
+                state.rects
+                ->List.map(rect => {
+                    rect.id == staging.id ? {...staging, x, y} : rect
+                  }),
+            }
 
           | (SelectRect(id), _) => {...state, selectedRectId: Some(id)}
 

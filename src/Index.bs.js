@@ -163,85 +163,183 @@ function Index$App(Props) {
   var match = React.useReducer((function (state, action) {
           switch (action.tag | 0) {
             case /* MouseDown */0 :
-                if (state.stagingRect !== undefined || state.tool !== 0) {
+                if (state.stagingRect !== undefined) {
                   return state;
                 } else {
-                  var y = action[1];
-                  var x = action[0];
-                  if (inBounds(state, x, y)) {
-                    return {
-                            nextId: state.nextId,
-                            rects: state.rects,
-                            stagingRect: {
-                              id: 0,
-                              w: 0,
-                              h: 0,
-                              rot: 0,
-                              x: x,
-                              y: y
-                            },
-                            selectedRectId: state.selectedRectId,
-                            tool: state.tool,
-                            width: state.width,
-                            height: state.height,
-                            mouse: state.mouse
-                          };
-                  } else {
+                  var match = state.tool;
+                  if (match >= 3) {
                     return state;
+                  } else {
+                    var y = action[1];
+                    var x = action[0];
+                    switch (match) {
+                      case /* Add */0 :
+                          if (inBounds(state, x, y)) {
+                            return {
+                                    nextId: state.nextId,
+                                    rects: state.rects,
+                                    stagingRect: {
+                                      id: 0,
+                                      w: 0,
+                                      h: 0,
+                                      rot: 0,
+                                      x: x,
+                                      y: y
+                                    },
+                                    selectedRectId: state.selectedRectId,
+                                    tool: state.tool,
+                                    width: state.width,
+                                    height: state.height,
+                                    mouse: state.mouse
+                                  };
+                          } else {
+                            return state;
+                          }
+                      case /* Select */1 :
+                          return state;
+                      case /* Move */2 :
+                          if (inBounds(state, x, y)) {
+                            var stagingRect = Belt_List.getBy(state.rects, (function (param) {
+                                    return Caml_obj.caml_equal(state.selectedRectId, param.id);
+                                  }));
+                            return {
+                                    nextId: state.nextId,
+                                    rects: state.rects,
+                                    stagingRect: stagingRect,
+                                    selectedRectId: state.selectedRectId,
+                                    tool: state.tool,
+                                    width: state.width,
+                                    height: state.height,
+                                    mouse: state.mouse
+                                  };
+                          } else {
+                            return state;
+                          }
+                      
+                    }
                   }
                 }
             case /* MouseMove */1 :
-                var match = state.stagingRect;
-                if (match !== undefined && state.tool === 0) {
-                  var staging = match;
-                  var s = Caml_primitive.caml_float_min(action[0] - staging.x, action[1] - staging.y);
-                  return {
-                          nextId: state.nextId,
-                          rects: state.rects,
-                          stagingRect: {
-                            id: staging.id,
-                            w: s,
-                            h: s,
-                            rot: staging.rot,
-                            x: staging.x,
-                            y: staging.y
-                          },
-                          selectedRectId: state.selectedRectId,
-                          tool: state.tool,
-                          width: state.width,
-                          height: state.height,
-                          mouse: state.mouse
-                        };
+                var match$1 = state.stagingRect;
+                if (match$1 !== undefined) {
+                  var match$2 = state.tool;
+                  if (match$2 >= 3) {
+                    return state;
+                  } else {
+                    var staging = match$1;
+                    var y$1 = action[1];
+                    var x$1 = action[0];
+                    switch (match$2) {
+                      case /* Add */0 :
+                          var s = Caml_primitive.caml_float_min(x$1 - staging.x, y$1 - staging.y);
+                          return {
+                                  nextId: state.nextId,
+                                  rects: state.rects,
+                                  stagingRect: {
+                                    id: staging.id,
+                                    w: s,
+                                    h: s,
+                                    rot: staging.rot,
+                                    x: staging.x,
+                                    y: staging.y
+                                  },
+                                  selectedRectId: state.selectedRectId,
+                                  tool: state.tool,
+                                  width: state.width,
+                                  height: state.height,
+                                  mouse: state.mouse
+                                };
+                      case /* Select */1 :
+                          return state;
+                      case /* Move */2 :
+                          return {
+                                  nextId: state.nextId,
+                                  rects: state.rects,
+                                  stagingRect: {
+                                    id: staging.id,
+                                    w: staging.w,
+                                    h: staging.h,
+                                    rot: staging.rot,
+                                    x: x$1,
+                                    y: y$1
+                                  },
+                                  selectedRectId: state.selectedRectId,
+                                  tool: state.tool,
+                                  width: state.width,
+                                  height: state.height,
+                                  mouse: state.mouse
+                                };
+                      
+                    }
+                  }
                 } else {
                   return state;
                 }
             case /* MouseUp */2 :
-                var match$1 = state.stagingRect;
-                if (match$1 !== undefined && state.tool === 0) {
-                  var staging$1 = match$1;
-                  var s$1 = Caml_primitive.caml_float_min(action[0] - staging$1.x, action[1] - staging$1.y);
-                  var newRect_id = state.nextId;
-                  var newRect_rot = staging$1.rot;
-                  var newRect_x = staging$1.x;
-                  var newRect_y = staging$1.y;
-                  var newRect = {
-                    id: newRect_id,
-                    w: s$1,
-                    h: s$1,
-                    rot: newRect_rot,
-                    x: newRect_x,
-                    y: newRect_y
-                  };
-                  return {
-                          nextId: newRect_id + 1 | 0,
-                          rects: Belt_List.add(state.rects, newRect),
-                          stagingRect: undefined,
-                          selectedRectId: newRect_id,
-                          tool: state.tool,
-                          width: state.width,
-                          height: state.height,
-                          mouse: state.mouse
-                        };
+                var match$3 = state.stagingRect;
+                if (match$3 !== undefined) {
+                  var match$4 = state.tool;
+                  if (match$4 >= 3) {
+                    return state;
+                  } else {
+                    var staging$1 = match$3;
+                    var y$2 = action[1];
+                    var x$2 = action[0];
+                    switch (match$4) {
+                      case /* Add */0 :
+                          var s$1 = Caml_primitive.caml_float_min(x$2 - staging$1.x, y$2 - staging$1.y);
+                          var newRect_id = state.nextId;
+                          var newRect_rot = staging$1.rot;
+                          var newRect_x = staging$1.x;
+                          var newRect_y = staging$1.y;
+                          var newRect = {
+                            id: newRect_id,
+                            w: s$1,
+                            h: s$1,
+                            rot: newRect_rot,
+                            x: newRect_x,
+                            y: newRect_y
+                          };
+                          return {
+                                  nextId: newRect_id + 1 | 0,
+                                  rects: Belt_List.add(state.rects, newRect),
+                                  stagingRect: undefined,
+                                  selectedRectId: newRect_id,
+                                  tool: state.tool,
+                                  width: state.width,
+                                  height: state.height,
+                                  mouse: state.mouse
+                                };
+                      case /* Select */1 :
+                          return state;
+                      case /* Move */2 :
+                          return {
+                                  nextId: state.nextId,
+                                  rects: Belt_List.map(state.rects, (function (rect) {
+                                          var match = rect.id === staging$1.id;
+                                          if (match) {
+                                            return {
+                                                    id: staging$1.id,
+                                                    w: staging$1.w,
+                                                    h: staging$1.h,
+                                                    rot: staging$1.rot,
+                                                    x: x$2,
+                                                    y: y$2
+                                                  };
+                                          } else {
+                                            return rect;
+                                          }
+                                        })),
+                                  stagingRect: undefined,
+                                  selectedRectId: state.selectedRectId,
+                                  tool: state.tool,
+                                  width: state.width,
+                                  height: state.height,
+                                  mouse: state.mouse
+                                };
+                      
+                    }
+                  }
                 } else {
                   return state;
                 }
@@ -249,7 +347,7 @@ function Index$App(Props) {
                 return {
                         nextId: state.nextId,
                         rects: state.rects,
-                        stagingRect: state.stagingRect,
+                        stagingRect: undefined,
                         selectedRectId: state.selectedRectId,
                         tool: action[0],
                         width: state.width,
