@@ -4,108 +4,17 @@ var Css = require("bs-css-emotion/src/Css.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var React = require("react");
+var Recoil = require("recoil");
 var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
-var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var ReactDOMRe = require("reason-react/src/legacy/ReactDOMRe.bs.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Caml_primitive = require("bs-platform/lib/js/caml_primitive.js");
+var Tool$ReasonReactExamples = require("./Tool.bs.js");
+var State$ReasonReactExamples = require("./State.bs.js");
 
-function add(param, param$1) {
-  return /* tuple */[
-          param[0] + param$1[0],
-          param[1] + param$1[1]
-        ];
-}
-
-function mult(param, param$1) {
-  var d = param$1[1];
-  var c = param$1[0];
-  var b = param[1];
-  var a = param[0];
-  return /* tuple */[
-          a * c - b * d,
-          a * d + b * c
-        ];
-}
-
-function mod_sq(param) {
-  var i = param[1];
-  var r = param[0];
-  return r * r + i * i;
-}
-
-var Complex = {
-  add: add,
-  mult: mult,
-  mod_sq: mod_sq
-};
-
-function remap(low1, high1, low2, high2, value) {
-  return low2 + (value - low1) * (high2 - low2) / (high1 - low1);
-}
-
-function testIterations(c) {
-  var _c = /* tuple */[
-    0,
-    0
-  ];
-  var _i = 0;
-  while(true) {
-    var i = _i;
-    var c$1 = _c;
-    if (mod_sq(c$1) > 4.0 || i > 200000) {
-      return i;
-    }
-    _i = i + 1 | 0;
-    _c = add(mult(c$1, c$1), c);
-    continue ;
-  };
-}
-
-var Mandelbrot = {
-  testIterations: testIterations
-};
-
-function Index$Fractal(Props) {
-  var w = Props.w;
-  var h = Props.h;
-  var pan = Props.pan;
-  var zoom = Props.zoom;
-  var grid = Belt_Array.map(Belt_Array.make(w, undefined), (function (param) {
-          return Belt_Array.make(h, undefined);
-        }));
-  var w_f = w;
-  var h_f = h;
-  var pan_y = pan[1];
-  var pan_x = pan[0];
-  return React.createElement("table", undefined, React.createElement("tbody", undefined, Belt_Array.mapWithIndex(grid, (function (y, row) {
-                        return React.createElement("tr", undefined, Belt_Array.mapWithIndex(row, (function (x, param) {
-                                          var xn = remap(0, w_f, -1, 1, x);
-                                          var yn = remap(0, h_f, -1, 1, y);
-                                          var iters = testIterations(/* tuple */[
-                                                xn / zoom + pan_x,
-                                                yn / zoom + pan_y
-                                              ]);
-                                          var lightness = iters * 20 % 100;
-                                          var hue = iters / 1.618;
-                                          return React.createElement("td", {
-                                                      style: {
-                                                        backgroundColor: "hsl(" + (String(hue) + (", 100%, " + (String(lightness) + "%)"))),
-                                                        height: "2px",
-                                                        width: "2px"
-                                                      }
-                                                    });
-                                        })));
-                      }))));
-}
-
-var Fractal = {
-  make: Index$Fractal
-};
-
-var toolList = /* :: */[
+var toolbarOrder = /* :: */[
   /* Add */0,
   /* :: */[
     /* Select */1,
@@ -118,20 +27,6 @@ var toolList = /* :: */[
     ]
   ]
 ];
-
-function toolLabel(param) {
-  switch (param) {
-    case /* Add */0 :
-        return "Add";
-    case /* Select */1 :
-        return "Select";
-    case /* Move */2 :
-        return "Move";
-    case /* Rotate */3 :
-        return "Rotate";
-    
-  }
-}
 
 function toolForKey(param) {
   switch (param) {
@@ -147,6 +42,33 @@ function toolForKey(param) {
       return ;
   }
 }
+
+function Index$RectDisplay(Props) {
+  var id = Props.id;
+  var rect = Recoil.useRecoilValue(Curry._1(State$ReasonReactExamples.RectState.byId, id));
+  var isDragging = Recoil.useRecoilValue(State$ReasonReactExamples.isDragging);
+  var selectedRectId = Recoil.useRecoilValue(State$ReasonReactExamples.selectedRectId);
+  var selected = Caml_obj.caml_equal(id, selectedRectId);
+  var tmp = {
+    key: String(id),
+    height: rect.h.toString(),
+    width: rect.w.toString(),
+    fill: "none",
+    stroke: selected ? "goldenrod" : "gainsboro",
+    strokeWidth: "1",
+    x: rect.x.toString(),
+    y: rect.y.toString()
+  };
+  var tmp$1 = selected && isDragging ? "1 2" : undefined;
+  if (tmp$1 !== undefined) {
+    tmp.strokeDasharray = Caml_option.valFromOption(tmp$1);
+  }
+  return React.createElement("rect", tmp);
+}
+
+var RectDisplay = {
+  make: Index$RectDisplay
+};
 
 function inBounds(state, x, y) {
   if (x > 0 && x <= state.width && y > 0) {
@@ -211,6 +133,7 @@ function cancelDrag(state) {
 }
 
 function Index$App(Props) {
+  var appState = Recoil.useRecoilValue(State$ReasonReactExamples.appState);
   var match = React.useReducer((function (state, action) {
           switch (action.tag | 0) {
             case /* MouseDown */0 :
@@ -438,7 +361,6 @@ function Index$App(Props) {
         ]
       });
   var dispatch = match[1];
-  var state = match[0];
   var svgRef = React.useRef(null);
   var svgRect = React.useRef(new DOMRect(0, 0, 800, 800));
   var mouseXY = React.useRef(/* tuple */[
@@ -453,10 +375,13 @@ function Index$App(Props) {
                 }));
           
         }), [svgRef]);
+  var setToolState = Recoil.useSetRecoilState(State$ReasonReactExamples.toolState);
   React.useEffect((function () {
           var handler = function (e) {
             return Belt_Option.forEach(toolForKey(e.key), (function (tool) {
-                          return Curry._1(dispatch, /* SelectTool */Block.__(3, [tool]));
+                          return Curry._1(setToolState, (function (param) {
+                                        return tool;
+                                      }));
                         }));
           };
           document.addEventListener("keydown", handler);
@@ -637,9 +562,9 @@ function Index$App(Props) {
                           ]
                         ]
                       ])
-                }, Belt_List.toArray(Belt_List.map(toolList, (function (tool) {
+                }, Belt_List.toArray(Belt_List.map(toolbarOrder, (function (tool) {
                             return React.createElement("button", {
-                                        key: toolLabel(tool),
+                                        key: Tool$ReasonReactExamples.label(tool),
                                         className: Curry._1(Css.style, /* :: */[
                                               Css.unsafe("all", "unset"),
                                               /* :: */[
@@ -661,7 +586,7 @@ function Index$App(Props) {
                                                           2
                                                         ]),
                                                     /* :: */[
-                                                      Css.backgroundColor(tool === state.tool ? /* `hex */[
+                                                      Css.backgroundColor(tool === appState.tool ? /* `hex */[
                                                               5194459,
                                                               "333333"
                                                             ] : /* transparent */582626130),
@@ -676,7 +601,7 @@ function Index$App(Props) {
                                             e.stopPropagation();
                                             return Curry._1(dispatch, /* SelectTool */Block.__(3, [tool]));
                                           })
-                                      }, toolLabel(tool));
+                                      }, Tool$ReasonReactExamples.label(tool));
                           })))), React.createElement("div", {
                   className: Curry._1(Css.style, /* :: */[
                         Css.border(/* `px */[
@@ -693,8 +618,8 @@ function Index$App(Props) {
                       ])
                 }, React.createElement("div", undefined, "layers"), React.createElement("ul", {
                       className: Curry._1(Css.style, /* [] */0)
-                    }, Belt_List.toArray(Belt_List.map(state.rects, (function (rect) {
-                                var isSelected = Caml_obj.caml_equal(state.selectedRectId, rect.id);
+                    }, Belt_List.toArray(Belt_List.map(appState.rects, (function (rect) {
+                                var isSelected = Caml_obj.caml_equal(appState.selectedRectId, rect.id);
                                 return React.createElement("div", {
                                             className: Curry._1(Css.style, /* :: */[
                                                   Css.display(/* flex */-1010954439),
@@ -769,37 +694,25 @@ function Index$App(Props) {
                               ]
                             ]
                           ]),
-                      height: String(state.height),
-                      width: String(state.width)
-                    }, Belt_Option.getWithDefault(Belt_Option.map(state.stagingRect, (function (rect) {
+                      height: String(appState.height),
+                      width: String(appState.width)
+                    }, Belt_Option.getWithDefault(Belt_Option.map(appState.stagingRect, (function (rect) {
                                 return React.createElement("rect", {
                                             key: String(rect.id),
                                             height: rect.h.toString(),
                                             width: rect.w.toString(),
                                             fill: "none",
-                                            stroke: state.tool === /* Move */2 ? "goldenrod" : "limegreen",
+                                            stroke: appState.tool === /* Move */2 ? "goldenrod" : "limegreen",
                                             strokeDasharray: "10 2",
                                             strokeWidth: "1",
                                             x: rect.x.toString(),
                                             y: rect.y.toString()
                                           });
-                              })), null), Belt_List.toArray(Belt_List.map(state.rects, (function (rect) {
-                                var selected = Caml_obj.caml_equal(state.selectedRectId, rect.id);
-                                var tmp = {
-                                  key: String(rect.id),
-                                  height: rect.h.toString(),
-                                  width: rect.w.toString(),
-                                  fill: "none",
-                                  stroke: selected ? "goldenrod" : "gainsboro",
-                                  strokeWidth: "1",
-                                  x: rect.x.toString(),
-                                  y: rect.y.toString()
-                                };
-                                var tmp$1 = selected && state.tool === /* Move */2 && Belt_Option.isSome(state.gesture) ? "1 2" : undefined;
-                                if (tmp$1 !== undefined) {
-                                  tmp.strokeDasharray = Caml_option.valFromOption(tmp$1);
-                                }
-                                return React.createElement("rect", tmp);
+                              })), null), Belt_List.toArray(Belt_List.map(appState.rects, (function (rect) {
+                                return React.createElement(Index$RectDisplay, {
+                                            id: rect.id,
+                                            key: String(rect.id)
+                                          });
                               }))))));
 }
 
@@ -811,14 +724,12 @@ var App = {
   make: Index$App
 };
 
-ReactDOMRe.renderToElementWithId(React.createElement(Index$App, { }), "root");
+ReactDOMRe.renderToElementWithId(React.createElement(Recoil.RecoilRoot, {
+          children: React.createElement(Index$App, { })
+        }), "root");
 
-exports.Complex = Complex;
-exports.remap = remap;
-exports.Mandelbrot = Mandelbrot;
-exports.Fractal = Fractal;
-exports.toolList = toolList;
-exports.toolLabel = toolLabel;
+exports.toolbarOrder = toolbarOrder;
 exports.toolForKey = toolForKey;
+exports.RectDisplay = RectDisplay;
 exports.App = App;
 /*  Not a pure module */

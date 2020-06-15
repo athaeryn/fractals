@@ -1,101 +1,8 @@
 open Webapi.Dom;
 
-module Complex = {
-  type t = (float, float);
-  let add = ((ar, ai), (br, bi)) => (ar +. br, ai +. bi);
-  // (a+bi)(c+di) = (ac−bd) + (ad+bc)i
-  let mult = ((a, b), (c, d)) => (a *. c -. b *. d, a *. d +. b *. c);
-  let mod_sq = ((r, i)) => r *. r +. i *. i;
-};
+let toolbarOrder: list(Tool.t) = [Add, Select, Move, Rotate];
 
-let remap = (low1, high1, low2, high2, value) => {
-  low2 +. (value -. low1) *. (high2 -. low2) /. (high1 -. low1);
-};
-
-module Mandelbrot: {let testIterations: Complex.t => int;} = {
-  let rec test = (c, c0, i) => {
-    Complex.(
-      mod_sq(c) > 4.0 || i > 200000
-        ? i : test(mult(c, c)->add(c0), c0, i + 1)
-    );
-  };
-
-  let testIterations = c => test((0., 0.), c, 0);
-};
-
-module Fractal = {
-  [@react.component]
-  let make = (~w, ~h, ~pan, ~zoom) => {
-    let grid = Array.make(w, ())->Array.map(_ => Array.make(h, ()));
-    let w_f = float_of_int(w);
-    let h_f = float_of_int(h);
-    let (pan_x, pan_y) = pan;
-    <table>
-      <tbody>
-        {grid
-         ->Array.mapWithIndex((y, row) => {
-             <tr>
-               {row
-                ->Array.mapWithIndex((x, _) => {
-                    let xn = remap(0., w_f, -1., 1., float_of_int(x));
-                    let yn = remap(0., h_f, -1., 1., float_of_int(y));
-                    <td
-                      style={ReactDOMRe.Style.make(
-                        ~height="2px",
-                        ~width="2px",
-                        ~backgroundColor=
-                          {let iters =
-                             Mandelbrot.testIterations((
-                               xn /. zoom +. pan_x,
-                               yn /. zoom +. pan_y,
-                             ));
-                           let lightness =
-                             mod_float(float_of_int(iters) *. 20., 100.);
-                           let hue = float_of_int(iters) /. 1.618;
-                           {j|hsl($hue, 100%, $lightness%)|j}},
-                        (),
-                      )}
-                    />;
-                  })
-                ->React.array}
-             </tr>
-           })
-         ->React.array}
-      </tbody>
-    </table>;
-  };
-};
-
-/* <App h=128 w=128 zoom=100000000. pan=(0.2799053, 0.0085857) /> */
-/* <App h=256 w=256 zoom=100.0 pan=((-1.1182), (-0.27)) /> */
-/* <App h=128 w=128 zoom=0.75 pan=((-2.), (-0.0)) /> */
-/* <App h=256 w=256 zoom=0.75 pan=((-0.5), (-0.0)) /> */
-
-type rect = {
-  id: int,
-  w: float,
-  h: float,
-  rot: float,
-  x: float,
-  y: float,
-};
-
-type tool =
-  | Add
-  | Select
-  | Move
-  | Rotate;
-
-let toolList = [Add, Select, Move, Rotate];
-
-let toolLabel =
-  fun
-  | Add => "Add"
-  | Select => "Select"
-  | Move => "Move"
-  | Rotate => "Rotate";
-
-let toolForKey =
+let toolForKey: string => option(Tool.t) =
   fun
   | "a" => Add->Some
   | "s" => Select->Some
@@ -103,59 +10,66 @@ let toolForKey =
   | "r" => Rotate->Some
   | _ => None;
 
-type drag = {
-  initialX: float,
-  initialY: float,
-  currentX: float,
-  currentY: float,
+module RectDisplay = {
+  [@react.component]
+  let make = (~id: int) => {
+    let rect = Recoil.useRecoilValue(State.RectState.byId(id));
+    let isDragging = Recoil.useRecoilValue(State.isDragging);
+    let selected = {
+      let selectedRectId = Recoil.useRecoilValue(State.selectedRectId);
+      Some(id) == selectedRectId;
+    };
+    <rect
+      key={id->string_of_int}
+      x={rect.x->Js.Float.toString}
+      y={rect.y->Js.Float.toString}
+      width={rect.Rect.w->Js.Float.toString}
+      height={rect.Rect.h->Js.Float.toString}
+      strokeWidth="1"
+      stroke={selected ? "goldenrod" : "gainsboro"}
+      strokeDasharray=?{selected && isDragging ? Some("1 2") : None}
+      fill="none"
+    />;
+  };
 };
 
 module App = {
-  type state = {
-    nextId: int,
-    rects: list(rect),
-    stagingRect: option(rect),
-    selectedRectId: option(int),
-    gesture: option(drag),
-    tool,
-    width: int,
-    height: int,
-    mouse: (float, float),
-  };
+  type state = State.state;
 
   type action =
     | MouseDown(float, float)
     | MouseMove(float, float)
     | MouseUp(float, float)
-    | SelectTool(tool)
+    | SelectTool(Tool.t)
     | SelectRect(int);
   /* | CreateNewRect(rect) */
   /* | CommitNewRect(rect); */
 
   let inBounds = (state, x, y) => {
     x > 0.
-    && x <= float_of_int(state.width)
+    && x <= float_of_int(state.State.width)
     && y > 0.
     && y <= float_of_int(state.height);
   };
 
   let startDrag = (state, x, y) => {
     ...state,
-    gesture: Some({initialX: x, initialY: y, currentX: x, currentY: y}),
+    State.gesture: Some({initialX: x, initialY: y, currentX: x, currentY: y}),
   };
 
   let updateDrag = (state, x, y) => {
     ...state,
-    gesture:
-      state.gesture
+    State.gesture:
+      state.State.gesture
       ->Option.map(gesture => {...gesture, currentX: x, currentY: y}),
   };
 
-  let cancelDrag = state => {...state, gesture: None};
+  let cancelDrag = state => {...state, State.gesture: None};
 
   [@react.component]
   let make = () => {
-    let (state, dispatch) =
+    let appState = Recoil.useRecoilValue(State.appState);
+    let (_state, dispatch) =
       React.useReducer(
         (state, action) => {
           switch (action, state) {
@@ -166,7 +80,7 @@ module App = {
               stagingRect: None,
             }
 
-          | (MouseDown(x, y), {tool: Add, stagingRect: None})
+          | (MouseDown(x, y), {State.tool: Add, stagingRect: None})
               when inBounds(state, x, y) => {
               ...state->startDrag(x, y),
               stagingRect: Some({id: 0, x, y, w: 0., h: 0., rot: 0.}),
@@ -257,13 +171,15 @@ module App = {
       [|svgRef|],
     );
 
+    let setToolState = Recoil.useSetRecoilState(State.toolState);
+
     // Tool hotkey listener
     React.useEffect0(() => {
       let handler = e => {
         e
         ->KeyboardEvent.key
         ->toolForKey
-        ->Option.forEach(tool => dispatch(SelectTool(tool)));
+        ->Option.forEach(tool => setToolState(_ => tool));
       };
       document |> Document.addKeyDownEventListener(handler);
       Some(() => {document |> Document.removeKeyDownEventListener(handler)});
@@ -337,10 +253,10 @@ module App = {
             alignItems(`center),
           ])
         )>
-        {toolList
+        {toolbarOrder
          ->List.map(tool => {
              <button
-               key={toolLabel(tool)}
+               key={Tool.label(tool)}
                className=Css.(
                  style([
                    unsafe("all", "unset"),
@@ -348,7 +264,7 @@ module App = {
                    border(`px(1), `solid, white),
                    borderRadius(`px(2)),
                    backgroundColor(
-                     tool == state.tool ? `hex("333333") : `transparent,
+                     tool == appState.tool ? `hex("333333") : `transparent,
                    ),
                  ])
                )
@@ -357,7 +273,7 @@ module App = {
                  ReactEvent.Synthetic.stopPropagation(e);
                  dispatch(SelectTool(tool));
                }}>
-               {tool->toolLabel->React.string}
+               {tool->Tool.label->React.string}
              </button>
            })
          ->List.toArray
@@ -373,9 +289,9 @@ module App = {
         )>
         <div> "layers"->React.string </div>
         <ul className=Css.(style([]))>
-          {state.rects
+          {appState.rects
            ->List.map(rect => {
-               let isSelected = state.selectedRectId == Some(rect.id);
+               let isSelected = appState.selectedRectId == Some(rect.id);
                <div
                  id={rect.id->string_of_int}
                  className=Css.(
@@ -435,9 +351,9 @@ module App = {
               height(`auto),
             ])
           )
-          width={state.width->string_of_int}
-          height={state.height->string_of_int}>
-          {state.stagingRect
+          width={appState.width->string_of_int}
+          height={appState.height->string_of_int}>
+          {appState.stagingRect
            ->Option.map(rect =>
                <rect
                  key={rect.id->string_of_int}
@@ -446,31 +362,15 @@ module App = {
                  width={rect.w->Js.Float.toString}
                  height={rect.h->Js.Float.toString}
                  strokeWidth="1"
-                 stroke={state.tool == Move ? "goldenrod" : "limegreen"}
+                 stroke={appState.tool == Move ? "goldenrod" : "limegreen"}
                  strokeDasharray="10 2"
                  fill="none"
                />
              )
            ->Option.getWithDefault(React.null)}
-          {state.rects
+          {appState.rects
            ->List.map(rect => {
-               let selected = state.selectedRectId == Some(rect.id);
-               <rect
-                 key={rect.id->string_of_int}
-                 x={rect.x->Js.Float.toString}
-                 y={rect.y->Js.Float.toString}
-                 width={rect.w->Js.Float.toString}
-                 height={rect.h->Js.Float.toString}
-                 strokeWidth="1"
-                 stroke={selected ? "goldenrod" : "gainsboro"}
-                 strokeDasharray=?{
-                   selected
-                   && state.tool == Move
-                   && Option.isSome(state.gesture)
-                     ? Some("1 2") : None
-                 }
-                 fill="none"
-               />;
+               <RectDisplay id={rect.id} key={rect.id->string_of_int} />
              })
            ->List.toArray
            ->React.array}
@@ -480,4 +380,7 @@ module App = {
   };
 };
 
-ReactDOMRe.renderToElementWithId(<App />, "root");
+ReactDOMRe.renderToElementWithId(
+  <Recoil.RecoilRoot> <App /> </Recoil.RecoilRoot>,
+  "root",
+);
