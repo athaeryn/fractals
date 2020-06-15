@@ -246,12 +246,11 @@ module App = {
     // TODO: update these bounds when necessary (e.g. after window resize).
     React.useEffect1(
       () => {
-        svgRef
-        ->React.Ref.current
+        svgRef.current
         ->Js.Nullable.toOption
         ->Option.forEach(node => {
             let rect = Element.getBoundingClientRect(node);
-            svgRect->React.Ref.setCurrent(rect);
+            svgRect.current = rect;
           });
         None;
       },
@@ -273,11 +272,11 @@ module App = {
     // Mouse move listener
     React.useEffect0(() => {
       let handler = e => {
-        let svgRectX = svgRect->React.Ref.current->DomRect.x;
-        let svgRectY = svgRect->React.Ref.current->DomRect.y;
+        let svgRectX = svgRect.current->DomRect.x;
+        let svgRectY = svgRect.current->DomRect.y;
         let x = e->MouseEvent.clientX->float_of_int -. svgRectX;
         let y = e->MouseEvent.clientY->float_of_int -. svgRectY;
-        mouseXY->React.Ref.setCurrent((x, y));
+        mouseXY.current = (x, y);
         dispatch(MouseMove(x, y));
         Js.log2("mouse move", (x, y));
       };
@@ -289,7 +288,7 @@ module App = {
 
     React.useEffect0(() => {
       let handler = _e => {
-        let (x, y) = mouseXY->React.Ref.current;
+        let (x, y) = mouseXY.current;
         Js.log2("mouse down", (x, y));
         dispatch(MouseDown(x, y));
       };
@@ -301,7 +300,7 @@ module App = {
 
     React.useEffect0(() => {
       let handler = _e => {
-        let (x, y) = mouseXY->React.Ref.current;
+        let (x, y) = mouseXY.current;
         Js.log2("mouse up", (x, y));
         dispatch(MouseUp(x, y));
       };
